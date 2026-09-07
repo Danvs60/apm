@@ -127,6 +127,12 @@ non-fatal:
 
 Other filesystem errors and validation failures remain fatal.
 
+:::note
+`--days` accepts a nonnegative integer. Negative values are rejected
+before the cache is touched. `0` makes every past entry eligible for
+removal.
+:::
+
 :::caution[Lockfile-blind]
 `prune` does not consult project lockfiles. It can evict every variant for a
 locked SHA. If the bare repository cannot rebuild the checkout, the next

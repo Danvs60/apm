@@ -101,7 +101,7 @@ def clean(force: bool, yes: bool) -> None:
 @cache.command(help="Remove Git checkout SHA groups older than N days")
 @click.option(
     "--days",
-    type=int,
+    type=click.IntRange(min=0),
     default=30,
     show_default=True,
     help="Remove SHA groups not accessed within this many days",
