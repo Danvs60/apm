@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Unix installation defaults to user-local directories without profile edits or implicit `sudo`. Existing destinations are preserved, but ordinary users cannot replace root-owned or package-managed installs; ask the original administrator or package manager to update or uninstall before migrating. See [Unix install ownership and migration](https://microsoft.github.io/apm/getting-started/installation/#unix-install-ownership-and-migration). (#2844)
 ### Changed
 
 - macOS onboarding now recommends Homebrew core (`brew install apm`, no tap) for existing Homebrew users, with `brew upgrade apm` for updates and visible standalone alternatives. (#2846)
