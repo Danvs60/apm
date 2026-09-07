@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Unix binary installs now verify original publisher SHA-256 sidecars before
+  extraction or execution, refuse historical or mirrored archives without
+  sidecars, and never fall back to pip after integrity failures. (#2842)
 ### Fixed
 
 - Unix installation defaults to user-local directories without profile edits or implicit `sudo`. Existing destinations are preserved, but ordinary users cannot replace root-owned or package-managed installs; ask the original administrator or package manager to update or uninstall before migrating. See [Unix install ownership and migration](https://microsoft.github.io/apm/getting-started/installation/#unix-install-ownership-and-migration). (#2844)
