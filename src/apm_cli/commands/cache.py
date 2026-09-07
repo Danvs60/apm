@@ -98,13 +98,13 @@ def clean(force: bool, yes: bool) -> None:
     logger.success("Cache cleaned.", symbol="check")
 
 
-@cache.command(help="Remove cache entries older than N days")
+@cache.command(help="Remove Git checkout SHA groups older than N days")
 @click.option(
     "--days",
     type=int,
     default=30,
     show_default=True,
-    help="Remove entries not accessed within this many days",
+    help="Remove SHA groups not accessed within this many days",
 )
 def prune(days: int) -> None:
     """Remove stale cache entries based on last access time.
@@ -125,12 +125,12 @@ def prune(days: int) -> None:
         _rich_error(f"Cannot resolve cache root: {exc}", symbol="error")
         raise SystemExit(1) from exc
 
-    _rich_info(f"Pruning entries older than {days} days...", symbol="gear")
+    _rich_info(f"Pruning SHA groups older than {days} days...", symbol="gear")
 
     git_cache = GitCache(root)
     pruned = git_cache.prune(max_age_days=days)
 
-    _rich_success(f"Pruned {pruned} checkout(s).", symbol="check")
+    _rich_success(f"Pruned {pruned} SHA group(s).", symbol="check")
 
 
 def _format_size(size_bytes: int) -> str:
