@@ -83,6 +83,7 @@ def parse_registry_object_entry(dependency_reference_cls: Any, entry: dict) -> A
                 f"Invalid alias: {alias}. Aliases can only contain "
                 f"letters, numbers, dots, underscores, and hyphens"
             )
+        validate_path_segments(alias, context="dependency alias")
 
     skills_raw = entry.get("skills")
     skill_subset = parse_skill_subset(skills_raw) if skills_raw is not None else None

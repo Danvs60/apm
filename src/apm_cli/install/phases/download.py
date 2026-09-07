@@ -59,6 +59,10 @@ def run(ctx: InstallContext) -> None:
             if _pd_ref.alias
             else _pd_ref.get_install_path(apm_modules_dir)
         )
+        if _pd_ref.alias:
+            from apm_cli.utils.path_security import ensure_path_within
+
+            ensure_path_within(_pd_path, apm_modules_dir)  # type: ignore[arg-type]
         # Skip local packages -- they are copied, not downloaded
         if _pd_ref.is_local:
             continue
