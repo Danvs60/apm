@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Public CLI release discovery can recover from a rejected environment token: one anonymous retry after a selected token's 401/non-rate-limit 403 only for canonical public APM metadata; metadata redirects require `APM_RELEASE_METADATA_URL` at the final JSON endpoint or a `VERSION` pin. (#2843)
 - `apm uninstall` now preserves declarations and deployed ownership after package deletion failures, keeping retry and reinstall recovery available after partial removal. (#2860)
 - Successful HTTP cache hits now refresh LRU recency without extending response freshness, retaining frequently used MCP registry responses. (#2859)
 

@@ -64,6 +64,18 @@ Existing installs keep their [original destinations](#unix-install-ownership-and
 
 On Windows, the installer adds both `current` and `bin` to `PATH`, with the stable `current\apm.exe` first. Bare `apm` calls therefore resolve the real executable in native shells, Git Bash, and process APIs such as Python `subprocess.run(["apm", ...])`; `bin\apm.cmd` remains available for compatibility.
 
+### Public release metadata
+
+CLI bootstrap and update checks are separate from [package authentication](../authentication/). Installers query metadata authenticated-first when a token is set: `GITHUB_APM_PAT` -> `GITHUB_TOKEN` -> `GH_TOKEN`. Python checks and stable/prerelease `apm self-update` use AuthResolver's environment-only chain, including per-org tokens before global variables, without invoking `gh` or Git credential helpers.
+
+An authenticated 401 or non-rate-limit 403 permits one anonymous retry, only at `https://api.github.com/repos/microsoft/apm/releases/latest` or `https://api.github.com/repos/microsoft/apm/releases?per_page=5` (prereleases). Primary/secondary rate limits (403 identified by headers or documented messages, or 429), network errors, other HTTP failures, and malformed metadata never trigger this retry.
+
+Anonymous recovery excludes private/custom repositories, GHES/custom hosts, explicit `APM_RELEASE_METADATA_URL` (even a canonical public URL), and `APM_NO_DIRECT_FALLBACK=1`. Mirrors never receive GitHub tokens or fall back to public URLs. `VERSION` skips latest-release discovery; a private Unix checksum retry can still query the selected tag.
+
+PowerShell metadata requests pass explicit headers and exclude `Credential`, `UseDefaultCredentials`, `Authentication`, `Token`, and `WebSession` defaults from a function-local copy of `$PSDefaultParameterValues`, retaining caller proxy configuration.
+
+See [self-update errors](../../reference/cli/self-update/#failure-modes) for diagnostics; background checks stay quiet.
+
 ### Installer options
 
 **macOS / Linux (`install.sh`):**
@@ -193,7 +205,7 @@ Root without both destinations, or without one `--prefix`, fails closed. The ins
 
 ### Enterprise bootstrap mirror mode
 
-Mirror mode routes bootstrap traffic through internal hosts. Four URL variables point install and self-update at your mirror; `APM_NO_DIRECT_FALLBACK=1` fails closed so no request reaches a public host:
+Set these four mirror URLs for CLI install and self-update; `APM_NO_DIRECT_FALLBACK=1` blocks public fallback. Release metadata does not follow redirects: set `APM_RELEASE_METADATA_URL` to the final JSON endpoint, or pin `VERSION`.
 
 ```bash
 export APM_INSTALLER_BASE_URL="https://artifactory.mycorp.example/generic/apm-install"
@@ -241,7 +253,7 @@ Mirror-mode installs follow the same Unix shell PATH rules as normal native inst
 
 #### What fail-closed does and does not cover
 
-Fail-closed scoping keys off the public `github.com` default. The guard only blocks egress when the resolved host would be public GitHub (`github.com` / `api.github.com`), `aka.ms`, or public PyPI. It does **not** suppress egress to a custom `GITHUB_URL`: if you set a GHES host (for example `GITHUB_URL=https://github.corp.com`) together with `APM_NO_DIRECT_FALLBACK=1` and no release mirror, the installer still reaches that GHES host. This is intentional coexistence with GHES, but "no direct fallback" should not be read as "zero egress" -- it means "no fallback to public hosts". For true zero-egress, set the `APM_RELEASE_METADATA_URL` / `APM_RELEASE_BASE_URL` / `APM_INSTALLER_BASE_URL` / `APM_PYPI_INDEX_URL` mirrors so every request resolves to your internal hosts. When `APM_RELEASE_METADATA_URL` is unset, GHES metadata requests intentionally use the resolved GitHub token for that host; mirror metadata requests never receive it. The GitHub token is attached only when the request targets the canonical GitHub / configured GHES host, never a mirror host.
+`APM_NO_DIRECT_FALLBACK=1` blocks public GitHub (`github.com` / `api.github.com`), `aka.ms`, and public PyPI, not a custom `GITHUB_URL`. With `GITHUB_URL=https://github.corp.com` and no metadata mirror, the installer still contacts GHES using its resolved GitHub token. "No direct fallback" means no fallback to public hosts, not zero egress. To keep all requests internal, configure all four mirrors above. See [Public release metadata](#public-release-metadata) for mirror token isolation and retry restrictions.
 
 Homebrew and Scoop mirror support is docs-only in this v0: mirror the tap or bucket with your package manager's normal enterprise controls, but the APM env vars above do not rewrite Homebrew or Scoop internals.
 
