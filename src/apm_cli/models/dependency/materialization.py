@@ -117,8 +117,15 @@ def build_materialization_path(
     alias = parse_alias_override(dependency.alias)
     if alias is not None:
         result = apm_modules_dir / alias
-        resolved = ensure_path_within(result, apm_modules_dir)
-        if resolved == apm_modules_dir.resolve():
+        try:
+            resolved = ensure_path_within(result, apm_modules_dir)
+        except PathTraversalError as exc:
+            raise PathTraversalError(
+                f"Invalid dependency alias {alias!r}: unsafe destination {result}. "
+                "Inspect the alias path without removing its target, choose a separate "
+                "package directory, and rerun apm install."
+            ) from exc
+        if resolved == ensure_path_within(apm_modules_dir, apm_modules_dir):
             raise PathTraversalError(
                 f"Invalid dependency alias {alias!r}: destination resolves to apm_modules itself. "
                 "Choose a separate package directory and rerun apm install."

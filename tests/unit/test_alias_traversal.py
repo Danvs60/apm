@@ -1,5 +1,7 @@
 """Unit tests for traversal alias rejection (alias-poisoning fix)."""
 
+from pathlib import Path
+
 import pytest
 
 from apm_cli.models.dependency import DependencyReference
@@ -134,3 +136,31 @@ class TestInstallPhaseSymlinkEscape:
 
         # The escape was blocked, never followed: the outside target is intact.
         assert sentinel.read_text() == "do not escape"
+
+    @pytest.mark.windows_compat
+    @pytest.mark.parametrize("target", ["root", "child", "outside"])
+    def test_extended_prefix_alias_destination(self, tmp_path, monkeypatch, target):
+        """Emulate Windows resolve spelling without requiring junction privileges."""
+        modules = tmp_path / "apm_modules"
+        alias_path = modules / "safe-name"
+        destination = {
+            "root": modules,
+            "child": modules / "child",
+            "outside": tmp_path / "outside",
+        }[target]
+        original_resolve = Path.resolve
+
+        def resolve_with_prefix(path, *args, **kwargs):
+            if path == alias_path:
+                return Path("\\\\?\\" + str(destination))
+            if path == modules:
+                return Path("\\\\?\\" + str(modules))
+            return original_resolve(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "resolve", resolve_with_prefix)
+        dependency = DependencyReference(repo_url="org/pkg", alias="safe-name")
+        if target == "child":
+            assert dependency.get_install_path(modules) == alias_path
+        else:
+            with pytest.raises(PathTraversalError):
+                dependency.get_install_path(modules)

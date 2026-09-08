@@ -88,13 +88,22 @@ def _prepare_existing_materialization_paths(
     for dependency in dependencies:
         if dependency.is_marketplace:
             continue
-        _materialization.prepare_materialization_path(
+        destination = _materialization.prepare_materialization_path(
             dependency,
             apm_modules_dir,
             staging_session,
             reader=materialization_reader,
             on_migrate=on_migrate,
         )
+        if destination.exists():
+            from apm_cli.install.legacy_plugin_compat import validate_cached_legacy_plugin
+
+            validate_cached_legacy_plugin(
+                destination,
+                dependency.get_unique_key(),
+                lockfile=existing_lockfile,
+                fetched_this_run=False,
+            )
 
 
 def _materialization_migration_logger(

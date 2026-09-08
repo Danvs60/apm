@@ -481,7 +481,7 @@ def check_dependency_identity(provider: FactsProvider) -> tuple[Violation, ...]:
             "alias = parse_alias_override(dependency.alias)",
             "if alias is not None:",
             "resolved = ensure_path_within(result, apm_modules_dir)",
-            "if resolved == apm_modules_dir.resolve():",
+            "if resolved == ensure_path_within(apm_modules_dir, apm_modules_dir):",
             "if dependency.alias is not None or not dependency.has_case_insensitive_repo_identity:",
         ),
         "src/apm_cli/install/phases/download.py": (
@@ -489,6 +489,13 @@ def check_dependency_identity(provider: FactsProvider) -> tuple[Violation, ...]:
         ),
         "src/apm_cli/install/phases/integrate.py": (
             "install_path = dep_ref.get_install_path(apm_modules_dir)",
+        ),
+        _RESOLVE_PHASE: (
+            "if destination.exists():",
+            "validate_cached_legacy_plugin(",
+        ),
+        "src/apm_cli/install/legacy_plugin_compat.py": (
+            "plugin_json_path = validate_cached_legacy_plugin(",
         ),
     }
     for path, required in alias_consumers.items():

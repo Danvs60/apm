@@ -1619,8 +1619,12 @@ def test_required_invalid_receiptless_legacy_cache_fails_with_recovery(
     assert result.returncode != 0, _result_evidence(result)
     assert source.package.name in output
     assert str(cached_package) in "".join(output.split())
-    assert "apm deps clean --yes" in output
-    if invalid_cache == "plugin-path":
+    if invalid_cache == "package-root-symlink":
+        assert "unsafe destination" in output
+        assert "without removing its target" in output
+        assert "rerun apm install" in output
+        assert "apm deps clean --yes" not in output
+    elif invalid_cache == "plugin-path":
         assert "is invalid" in output
     elif invalid_cache == "missing-hash":
         assert "no content hash" in output
@@ -1630,6 +1634,8 @@ def test_required_invalid_receiptless_legacy_cache_fails_with_recovery(
         assert "required .apm directory is missing" in output
     else:
         assert "cache metadata contains a symlink" in output
+    if invalid_cache != "package-root-symlink":
+        assert "apm deps clean --yes" in output
 
     if package_link_target is not None:
         assert cached_package.is_symlink()

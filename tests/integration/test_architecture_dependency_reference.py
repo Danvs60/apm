@@ -68,7 +68,7 @@ def test_alias_consumers_share_validation_and_materialization() -> None:
         ),
         (
             "src/apm_cli/models/dependency/materialization.py",
-            "if resolved == apm_modules_dir.resolve():",
+            "if resolved == ensure_path_within(apm_modules_dir, apm_modules_dir):",
             "if False:",
         ),
         (
@@ -80,6 +80,11 @@ def test_alias_consumers_share_validation_and_materialization() -> None:
             "src/apm_cli/install/phases/integrate.py",
             "install_path = dep_ref.get_install_path(apm_modules_dir)",
             "install_path = apm_modules_dir / dep_ref.alias",
+        ),
+        (
+            "src/apm_cli/install/phases/resolve.py",
+            "if destination.exists():",
+            "if False:",
         ),
     ],
 )
