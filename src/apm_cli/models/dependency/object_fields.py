@@ -41,8 +41,8 @@ def parse_alias_override(raw: object) -> str | None:
         validate_path_segments(alias, context="dependency alias")
     except PathTraversalError:
         raise ValueError(
-            f"Invalid alias: {alias}. Aliases can only contain "
-            "letters, numbers, dots, underscores, and hyphens"
+            f"Invalid dependency alias {alias!r}: '.' and '..' are reserved directory names. "
+            "Set alias to a name such as 'my-skill.v2' in apm.yml and rerun apm install."
         ) from None
     return alias
 

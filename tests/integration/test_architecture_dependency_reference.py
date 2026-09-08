@@ -44,3 +44,55 @@ def test_embedded_git_url_subpath_guard_rejects_provider_bypass() -> None:
         violation.rule_id == RULE_ID and "Embedded git URL subpath validation" in violation.message
         for violation in report.violations
     )
+
+
+def test_alias_consumers_share_validation_and_materialization() -> None:
+    """All ingress and install boundaries route through the existing owners."""
+    report = run_selected_rules(ROOT, (RULE_ID,))
+    assert not report.violations
+
+
+@pytest.mark.parametrize(
+    ("path", "before", "after"),
+    [
+        (REFERENCE, "alias = parse_alias_override(alias)", "alias = alias"),
+        (
+            "src/apm_cli/models/dependency/registry_entry.py",
+            'alias = parse_alias_override(entry.get("alias"))',
+            'alias = entry.get("alias")',
+        ),
+        (
+            "src/apm_cli/models/dependency/object_fields.py",
+            'validate_path_segments(alias, context="dependency alias")',
+            "pass",
+        ),
+        (
+            "src/apm_cli/models/dependency/materialization.py",
+            "if resolved == apm_modules_dir.resolve():",
+            "if False:",
+        ),
+        (
+            "src/apm_cli/install/phases/download.py",
+            "_pd_path = _pd_ref.get_install_path(apm_modules_dir)",
+            "_pd_path = apm_modules_dir / _pd_ref.alias",
+        ),
+        (
+            "src/apm_cli/install/phases/integrate.py",
+            "install_path = dep_ref.get_install_path(apm_modules_dir)",
+            "install_path = apm_modules_dir / dep_ref.alias",
+        ),
+    ],
+)
+def test_alias_owner_guard_rejects_bypass(path: str, before: str, after: str) -> None:
+    """Restoring a split alias decision must trip the registered static guard."""
+    source = (ROOT / path).read_text(encoding="utf-8")
+    assert before in source
+    report = run_selected_rules(
+        ROOT,
+        (RULE_ID,),
+        source_overrides={path: source.replace(before, after, 1)},
+    )
+    assert any(
+        violation.rule_id == RULE_ID and "Dependency aliases" in violation.message
+        for violation in report.violations
+    )

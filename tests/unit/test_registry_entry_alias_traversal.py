@@ -1,18 +1,4 @@
-"""Regression traps for the object-form registry alias validation.
-
-``parse_registry_object_entry`` (registry_entry.py) validates the ``alias``
-field in two layers:
-
-1. ``_ALIAS_PATTERN`` (registry_entry.py:81) -- rejects any character outside
-   letters / digits / dot / underscore / hyphen. This blocks ``/`` so most
-   traversal payloads never reach the next layer.
-2. ``validate_path_segments`` (registry_entry.py:86) -- the defense-in-depth
-   containment/segment check that catches ``..`` payloads the regex permits
-   (dashes and dots are legal in an alias).
-
-These tests regression-trap both layers so the object-form registry parser
-cannot silently install at an escaping alias path.
-"""
+"""Registry aliases delegate character and reserved-name checks to the shared parser."""
 
 from __future__ import annotations
 
@@ -51,14 +37,13 @@ class TestRegistryObjectEntryTraversalAlias:
                 {"id": "org/pkg", "version": "v1", "alias": ".."},
             )
 
-    def test_nested_dotdot_alias_rejected(self):
-        """A dotted lookup-style alias resolves to a traversal in
-        validate_path_segments when the regex allows '..' segments."""
+    def test_dot_alias_rejected(self):
+        """A bare dot passes the character regex but names the modules root."""
         cls = _make_reference_cls()
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(ValueError, match="reserved directory names"):
             parse_registry_object_entry(
                 cls,
-                {"id": "org/pkg", "version": "v1", "alias": "pkg/.."},
+                {"id": "org/pkg", "version": "v1", "alias": "."},
             )
 
     def test_encoded_dotdot_alias_rejected(self):

@@ -1,22 +1,9 @@
-"""Regression traps for the ensure_path_within defense-in-depth guards.
+"""Both install phases must consult the strict alias materialization owner.
 
-The install pipeline computes an ``install_path`` from a user-supplied alias
-in two phases:
-
-- ``src/apm_cli/install/phases/download.py:65``  -- before any download bytes
-  land at an alias-derived destination.
-- ``src/apm_cli/install/phases/integrate.py:622`` -- before the alias-derived
-  path is handed to materialization / integration.
-
-Even when the parser (``parse_alias_override``) is bypassed -- e.g. a crafted
-DependencyReference carrying an alias that navigates with ``..`` or a symlink
-that resolves outside ``apm_modules_dir`` -- these guards are the last line
-that keeps ``install_path`` inside ``apm_modules_dir`` (the PR body "Scenario
-4" claim: the install path can never escape apm_modules even if the parser is
-bypassed).
-
-These tests drive both phase entry points directly with malicious aliases and
-assert the guard raises before any bytes are written / materialized.
+Real constructed references bypass ingress validation. Each phase independently
+rejects reserved names and symlinks to the modules root or outside it, before
+download or integration. Remote transport and integration outputs are mocked;
+the required lifecycle suite verifies real installed metadata and hashes.
 """
 
 from __future__ import annotations
@@ -27,6 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apm_cli.install.context import InstallContext
+from apm_cli.models.dependency import DependencyReference
 from apm_cli.utils.path_security import PathTraversalError
 
 # ---------------------------------------------------------------------------
@@ -94,21 +82,14 @@ def _make_integrate_ctx(tmp_path: Path) -> InstallContext:
     return ctx
 
 
-def _make_dep_ref(key: str, *, alias: str, is_local: bool = True) -> MagicMock:
-    """Build a MagicMock DependencyReference carrying a crafted *alias*.
-
-    ``is_local`` defaults to True so the guard -- which fires BEFORE the
-    local-skip branch in both phases -- is exercised without needing to
-    mock the full git downloader.
-    """
-    dep = MagicMock()
-    dep.get_unique_key.return_value = key
-    dep.get_identity.return_value = key
-    dep.get_display_name.return_value = key
-    dep.alias = alias
-    dep.is_local = is_local
-    dep.local_path = "./local" if is_local else None
-    return dep
+def _make_dep_ref(key: str, *, alias: str, is_local: bool = True) -> DependencyReference:
+    """Construct a real reference that bypasses ingress validation."""
+    return DependencyReference(
+        repo_url=key,
+        alias=alias,
+        is_local=is_local,
+        local_path="./local" if is_local else None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -117,25 +98,27 @@ def _make_dep_ref(key: str, *, alias: str, is_local: bool = True) -> MagicMock:
 
 
 class TestDownloadRejectsEscapingAlias:
-    def test_dotdot_alias_rejected(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("alias", [".", "..", "../../etc"])
+    def test_dotdot_alias_rejected(self, tmp_path: Path, alias: str) -> None:
         from apm_cli.install.phases.download import run
 
         ctx = _make_download_ctx(tmp_path)
-        ctx.deps_to_install = [_make_dep_ref("org/pkg", alias="../../etc")]
+        ctx.deps_to_install = [_make_dep_ref("org/pkg", alias=alias)]
 
-        with pytest.raises(PathTraversalError):
+        with pytest.raises(ValueError):
             run(ctx)
 
         ctx.downloader.download_package.assert_not_called()
 
-    def test_symlink_escape_alias_rejected(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("target", ["outside", "root"])
+    def test_symlink_escape_alias_rejected(self, tmp_path: Path, target: str) -> None:
         from apm_cli.install.phases.download import run
 
         ctx = _make_download_ctx(tmp_path)
         outside = tmp_path / "outside_target"
         outside.mkdir()
         link = ctx.apm_modules_dir / "evil_link"
-        link.symlink_to(outside)
+        link.symlink_to(outside if target == "outside" else ctx.apm_modules_dir)
         ctx.deps_to_install = [_make_dep_ref("org/pkg", alias="evil_link")]
 
         with pytest.raises(PathTraversalError):
@@ -150,23 +133,25 @@ class TestDownloadRejectsEscapingAlias:
 
 
 class TestIntegrateRejectsEscapingAlias:
-    def test_dotdot_alias_rejected(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("alias", [".", "..", "../../etc"])
+    def test_dotdot_alias_rejected(self, tmp_path: Path, alias: str) -> None:
         from apm_cli.install.phases.integrate import run
 
         ctx = _make_integrate_ctx(tmp_path)
-        ctx.deps_to_install = [_make_dep_ref("org/pkg", alias="../../etc")]
+        ctx.deps_to_install = [_make_dep_ref("org/pkg", alias=alias)]
 
-        with pytest.raises(PathTraversalError):
+        with pytest.raises(ValueError):
             run(ctx)
 
-    def test_symlink_escape_alias_rejected(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("target", ["outside", "root"])
+    def test_symlink_escape_alias_rejected(self, tmp_path: Path, target: str) -> None:
         from apm_cli.install.phases.integrate import run
 
         ctx = _make_integrate_ctx(tmp_path)
         outside = tmp_path / "outside_target"
         outside.mkdir()
         link = ctx.apm_modules_dir / "evil_link"
-        link.symlink_to(outside)
+        link.symlink_to(outside if target == "outside" else ctx.apm_modules_dir)
         ctx.deps_to_install = [_make_dep_ref("org/pkg", alias="evil_link")]
 
         with pytest.raises(PathTraversalError):

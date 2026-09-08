@@ -1230,9 +1230,11 @@ def test_required_lock_preserves_user_edited_dropped_file_and_row(
     assert _record_by_value(locked, dropped_skill).owners == dropped_record.owners
 
 
+@pytest.mark.parametrize("alias", [".safe", "safe.", "foo..bar", "my-skill.v2"])
 def test_required_reinstall_is_byte_idempotent_across_durable_state(
     tmp_path: Path,
     apm_binary_path: Path,
+    alias: str,
 ) -> None:
     scenario = _new_scenario(tmp_path / "reinstall-idempotency", apm_binary_path)
     source = _publish(
@@ -1243,7 +1245,8 @@ def test_required_reinstall_is_byte_idempotent_across_durable_state(
     )
     consumer = scenario.consumers.create(
         "stable-consumer",
-        dependencies=(source.dependency,),
+        version="9.0.0",
+        dependencies=({**source.dependency, "alias": alias},),
         targets=("copilot",),
     )
 
@@ -1291,6 +1294,31 @@ def test_required_reinstall_is_byte_idempotent_across_durable_state(
     assert_unchanged(before_artifacts, after_artifacts)
     assert after.file(".github/instructions/stable.instructions.md").kind == "file"
     assert audit["passed"] is True
+    locked = LockFile.read(consumer.root / "apm.lock.yaml")
+    assert locked is not None
+    assert len(locked.dependencies) == 1
+    dependency = next(iter(locked.dependencies.values()))
+    installed = consumer.root / "apm_modules" / alias
+    assert dependency.name == source.package.name
+    assert dependency.version == load_yaml(source.package.manifest_path)["version"]
+    assert dependency.name != consumer.name
+    assert dependency.content_hash == compute_package_hash(installed)
+    assert not (consumer.root / "apm_modules" / _OWNER).exists()
+
+    for rejected in (".", ".."):
+        manifest = load_yaml(consumer.manifest_path)
+        manifest["dependencies"]["apm"][0]["alias"] = rejected
+        dump_yaml(manifest, consumer.manifest_path)
+        before_rejection = ArtifactSnapshot.capture(consumer.root)
+        result = scenario.runner.run(
+            _INSTALL_ARGS,
+            cwd=consumer.root,
+            env=source.environment,
+            scenario_id=f"reinstall-reject-alias-{len(rejected)}",
+        )
+        assert result.returncode != 0, _result_evidence(result)
+        assert "reserved directory names" in result.stdout + result.stderr
+        assert_unchanged(before_rejection, ArtifactSnapshot.capture(consumer.root))
 
 
 def test_required_legacy_content_hash_upgrade_preserves_skills_and_converges(

@@ -469,6 +469,42 @@ def check_dependency_identity(provider: FactsProvider) -> tuple[Violation, ...]:
         return tuple(failures)
 
     findings: list[Violation] = []
+    alias_consumers = {
+        _REFERENCE_OWNER: ("alias = parse_alias_override(alias)",),
+        "src/apm_cli/models/dependency/registry_entry.py": (
+            'alias = parse_alias_override(entry.get("alias"))',
+        ),
+        "src/apm_cli/models/dependency/object_fields.py": (
+            'validate_path_segments(alias, context="dependency alias")',
+        ),
+        _MATERIALIZATION_OWNER: (
+            "alias = parse_alias_override(dependency.alias)",
+            "if alias is not None:",
+            "resolved = ensure_path_within(result, apm_modules_dir)",
+            "if resolved == apm_modules_dir.resolve():",
+            "if dependency.alias is not None or not dependency.has_case_insensitive_repo_identity:",
+        ),
+        "src/apm_cli/install/phases/download.py": (
+            "_pd_path = _pd_ref.get_install_path(apm_modules_dir)",
+        ),
+        "src/apm_cli/install/phases/integrate.py": (
+            "install_path = dep_ref.get_install_path(apm_modules_dir)",
+        ),
+    }
+    for path, required in alias_consumers.items():
+        facts, errors = _facts_for(provider, path, rule_id)
+        findings.extend(errors)
+        if not errors and (
+            any(not _present(facts, needle) for needle in required)
+            or _present_re(facts, re.compile(r"/\s*\w+\.alias\b"))
+        ):
+            findings.append(
+                _summary(
+                    rule_id,
+                    path,
+                    "Dependency aliases must use shared validation and strict materialization ownership",
+                )
+            )
     unique_key_body = _awk_body(
         identity, re.compile(r"^def build_dependency_unique_key\("), re.compile(r"^def ")
     )

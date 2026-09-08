@@ -4,10 +4,11 @@
     {
       "id": "dependency-identity-materialization",
       "decision": "Dependency comparison identity and policy casing vs display-cased materialization path; embedded git URL subpath validation",
-      "owner": "models/dependency/identity.py + materialization.py + DependencyReference (_check_no_embedded_subpath consumes core/host_providers.py)",
+      "owner": "models/dependency/identity.py + materialization.py + object_fields.py (alias validation) + DependencyReference (_check_no_embedded_subpath consumes core/host_providers.py)",
       "selectors": [
         "src/apm_cli/models/dependency/identity.py",
         "src/apm_cli/models/dependency/materialization.py",
+        "src/apm_cli/models/dependency/object_fields.py",
         "src/apm_cli/models/dependency/reference.py"
       ],
       "guards": ["contracts-tooling-dependency-identity", "contracts-tooling-policy-identity"]
