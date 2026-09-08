@@ -616,10 +616,11 @@ def run(ctx: InstallContext) -> None:
         # For subdirectory packages: owner/repo/subdir -> apm_modules/owner/repo/subdir/
         if dep_ref.alias:
             # If alias is provided, use it directly (assume user handles namespacing)
-            install_path = apm_modules_dir / dep_ref.alias
             from apm_cli.utils.path_security import ensure_path_within
 
-            ensure_path_within(install_path, apm_modules_dir)  # type: ignore[arg-type]
+            assert apm_modules_dir is not None
+            install_path = apm_modules_dir / dep_ref.alias
+            ensure_path_within(install_path, apm_modules_dir)
         else:
             # Use the canonical install path from DependencyReference
             install_path = dep_ref.get_install_path(apm_modules_dir)
