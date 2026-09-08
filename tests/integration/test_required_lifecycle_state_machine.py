@@ -1500,24 +1500,32 @@ def test_required_parallel_fresh_fetch_bypasses_legacy_cache_upgrade(
 
 
 @pytest.mark.parametrize(
-    "invalid_cache",
-    (
-        "plugin-path",
-        "missing-hash",
-        "missing-apm-yml",
-        "missing-apm-dir",
-        "apm-yml-symlink",
-        "apm-dir-symlink",
-        "package-root-symlink",
-    ),
+    ("invalid_cache", "replace_ref"),
+    [
+        *(
+            pytest.param(invalid_cache, False, id=invalid_cache)
+            for invalid_cache in (
+                "plugin-path",
+                "missing-hash",
+                "missing-apm-yml",
+                "missing-apm-dir",
+                "apm-yml-symlink",
+                "apm-dir-symlink",
+                "package-root-symlink",
+            )
+        ),
+        pytest.param("missing-apm-yml", True, id="replacement-missing-apm-yml"),
+        pytest.param("missing-apm-dir", True, id="replacement-missing-apm-dir"),
+    ],
 )
 @pytest.mark.lifecycle_merge_group
 def test_required_invalid_receiptless_legacy_cache_fails_with_recovery(
     tmp_path: Path,
     apm_binary_path: Path,
     invalid_cache: str,
+    replace_ref: bool,
 ) -> None:
-    """Reject invalid 0.28 cache state without mutating cache or deployments."""
+    """Reject invalid reused caches, but permit a requested replacement fetch."""
     scenario = _new_scenario(
         tmp_path / f"invalid-legacy-cache-{invalid_cache}",
         apm_binary_path,
@@ -1600,6 +1608,10 @@ def test_required_invalid_receiptless_legacy_cache_fails_with_recovery(
     else:
         locked_dependency["content_hash"] = compute_package_hash(cached_package)
     dump_yaml(lock_document, lock_path)
+    if replace_ref:
+        manifest = load_yaml(consumer.manifest_path)
+        manifest["dependencies"]["apm"][0]["ref"] = "HEAD"
+        dump_yaml(manifest, consumer.manifest_path)
 
     before_state = LifecycleStateSnapshot.capture(consumer.root, targets=("claude", "codex"))
     before_cache = ArtifactSnapshot.capture(cached_package)
@@ -1615,6 +1627,18 @@ def test_required_invalid_receiptless_legacy_cache_fails_with_recovery(
         env=source.environment,
     )
     output = " ".join((result.stdout + result.stderr).split())
+
+    if replace_ref:
+        assert result.returncode == 0, _result_evidence(result)
+        assert receipt.is_file()
+        _, replaced = _single_locked_dependency(consumer.root)
+        assert replaced.resolved_commit == source.commit.sha
+        assert replaced.content_hash == compute_package_hash(cached_package)
+        assert (cached_package / "apm.yml").is_file()
+        for target in (".claude", ".agents"):
+            deployed = consumer.root / target / "skills" / "legacy-skill" / "SKILL.md"
+            assert deployed.read_text(encoding="utf-8") == _skill("legacy-skill")
+        return
 
     assert result.returncode != 0, _result_evidence(result)
     assert source.package.name in output

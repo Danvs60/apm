@@ -491,8 +491,15 @@ def check_dependency_identity(provider: FactsProvider) -> tuple[Violation, ...]:
             "install_path = dep_ref.get_install_path(apm_modules_dir)",
         ),
         _RESOLVE_PHASE: (
-            "if destination.exists():",
-            "validate_cached_legacy_plugin(",
+            "        cache_validation_callback=partial(",
+            "validate_cached_legacy_plugin,",
+        ),
+        "src/apm_cli/deps/apm_resolver.py": (
+            "if parent_dep.alias:",
+            "replace(parent_dep, alias=None).get_install_path(self._apm_modules_dir)",
+            "repo_root, parent_source = self._remote_source_paths_for_parent(",
+            "self._cache_validation_callback(install_path, dep_ref.get_unique_key())",
+            "and self._download_dedup_key(dep_ref, parent_pkg) not in self._downloaded_packages",
         ),
         "src/apm_cli/install/legacy_plugin_compat.py": (
             "plugin_json_path = validate_cached_legacy_plugin(",
@@ -501,9 +508,20 @@ def check_dependency_identity(provider: FactsProvider) -> tuple[Violation, ...]:
     for path, required in alias_consumers.items():
         facts, errors = _facts_for(provider, path, rule_id)
         findings.extend(errors)
+        source = "\n".join(_lines(facts))
+        reuse_order = (
+            source.find("if dep_ref.is_local or not install_path.exists()"),
+            source.find("self._cache_validation_callback(install_path,"),
+            source.find("materialize_marketplace_manifest(dep_ref, install_path)"),
+        )
+        misplaced_cache_validation = (
+            path == "src/apm_cli/deps/apm_resolver.py"
+            and not (0 <= reuse_order[0] < reuse_order[1] < reuse_order[2])
+        ) or (path == _RESOLVE_PHASE and "validate_cached_legacy_plugin(" in source)
         if not errors and (
             any(not _present(facts, needle) for needle in required)
             or _present_re(facts, re.compile(r"/\s*\w+\.alias\b"))
+            or misplaced_cache_validation
         ):
             findings.append(
                 _summary(

@@ -88,22 +88,13 @@ def _prepare_existing_materialization_paths(
     for dependency in dependencies:
         if dependency.is_marketplace:
             continue
-        destination = _materialization.prepare_materialization_path(
+        _materialization.prepare_materialization_path(
             dependency,
             apm_modules_dir,
             staging_session,
             reader=materialization_reader,
             on_migrate=on_migrate,
         )
-        if destination.exists():
-            from apm_cli.install.legacy_plugin_compat import validate_cached_legacy_plugin
-
-            validate_cached_legacy_plugin(
-                destination,
-                dependency.get_unique_key(),
-                lockfile=existing_lockfile,
-                fetched_this_run=False,
-            )
 
 
 def _materialization_migration_logger(
@@ -747,6 +738,8 @@ def _resolve_dependencies(
     # ------------------------------------------------------------------
     # 6. Resolver creation + dependency resolution
     # ------------------------------------------------------------------
+    from apm_cli.install.legacy_plugin_compat import validate_cached_legacy_plugin
+
     resolver = APMDependencyResolver(
         apm_modules_dir=ctx.apm_modules_dir,
         download_callback=download_callback,
@@ -761,6 +754,11 @@ def _resolve_dependencies(
         auth_resolver=ctx.auth_resolver,
         update_refs=update_refs,
         existing_lockfile=existing_lockfile,
+        cache_validation_callback=partial(
+            validate_cached_legacy_plugin,
+            lockfile=existing_lockfile,
+            fetched_this_run=False,
+        ),
     )
 
     # Resolver reads ``<anchor>/apm.yml``. Preserve the original

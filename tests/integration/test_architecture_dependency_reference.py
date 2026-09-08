@@ -83,8 +83,24 @@ def test_alias_consumers_share_validation_and_materialization() -> None:
         ),
         (
             "src/apm_cli/install/phases/resolve.py",
-            "if destination.exists():",
+            "cache_validation_callback=partial(",
+            "bypassed_cache_validation_callback=partial(",
+        ),
+        (
+            "src/apm_cli/deps/apm_resolver.py",
+            "if parent_dep.alias:",
             "if False:",
+        ),
+        (
+            "src/apm_cli/deps/apm_resolver.py",
+            "self._cache_validation_callback(install_path, dep_ref.get_unique_key())",
+            "pass",
+        ),
+        (
+            "src/apm_cli/deps/apm_resolver.py",
+            "had_existing_install = install_path.exists()",
+            "had_existing_install = install_path.exists()\n"
+            "        self._cache_validation_callback(install_path, dep_ref.get_unique_key())",
         ),
     ],
 )
