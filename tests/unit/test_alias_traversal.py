@@ -3,38 +3,51 @@
 import pytest
 
 from apm_cli.models.dependency.object_fields import parse_alias_override
-from apm_cli.utils.path_security import PathTraversalError
 
 
 class TestParseAliasOverrideTraversal:
     """Reject aliases that navigate outside apm_modules."""
 
     def test_single_dot_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override(".")
 
     def test_double_dot_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override("..")
 
     def test_traversal_segment_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override("foo/../bar")
 
     def test_leading_dot_slash_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override("./safe-name")
 
     def test_trailing_dot_dot_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override("pkg/..")
 
     def test_encoded_dot_dot_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override("%2e%2e")
 
     def test_double_encoded_dot_dot_rejected(self):
-        with pytest.raises((ValueError, PathTraversalError)):
+        with pytest.raises(
+            ValueError, match="Aliases can only contain letters, numbers, dots, underscores, and hyphens"
+        ):
             parse_alias_override("%252e%252e")
 
 
