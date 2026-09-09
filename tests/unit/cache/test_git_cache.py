@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apm_cli.cache.git_cache import CachePruneError, GitCache
+from apm_cli.cache.url_normalize import cache_shard_key
 
 
 @pytest.mark.parametrize("ref", ["main", "release/v1", "v1.0"])
@@ -50,6 +51,7 @@ def test_corrupt_remote_ref_receipt_does_not_revive_stale_bare_ref(tmp_path: Pat
     url = dependency.to_github_url()
     cache.remember_resolved_ref(url, "main", "b" * 40)
     cache._resolved_ref_path(url, "main").write_text("broken", encoding="ascii")
+    (cache._db_root / cache_shard_key(url)).mkdir()
     with patch.object(L2BareRevParse, "_rev_parse", return_value="a" * 40) as bare:
         assert L2BareRevParse(cache).try_resolve(dependency, "main") is None
     bare.assert_not_called()
