@@ -122,6 +122,13 @@ under `apm_modules/`, including through symlinks. Safe dotted names such as
 Do not remove or prune the rejected alias path: it can refer to
 `apm_modules/` itself or its parent.
 
+Valid aliases now persist in the lockfile so audit replay, hooks, MCP,
+and cleanup use the same directory as installation. For an older aliased
+install, run `apm install` and review the new `alias` metadata before
+committing. Keep using the updated CLI: older readers may preserve this
+field without honoring its placement. A missing alias never defaults to
+the package's inventory `name`.
+
 ## 4. Compile strategy migration
 
 The compile step writes per-target output (e.g. `.github/copilot-instructions.md`, `.claude/`, `.cursor/rules/`). Some targets support both a single-file (monolithic) layout and a per-primitive (distributed) layout.

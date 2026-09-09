@@ -62,7 +62,7 @@
     {
       "id": "read-only-lockfile-path",
       "decision": "Lockfile read path, timestamp emission, and reproducible fallback",
-      "owner": "deps/lockfile.py (resolve_lockfile_path_for_read, LockFile.write, resolve_reproducible_timestamp)",
+      "owner": "deps/lockfile.py (resolve_lockfile_path_for_read, LockFile.write, resolve_reproducible_timestamp, LockedDependency alias projection)",
       "selectors": ["src/apm_cli/deps/lockfile.py"],
       "guards": [
         "contracts-tooling-lockfile-read",

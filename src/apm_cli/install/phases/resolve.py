@@ -25,6 +25,9 @@ from apm_cli.install.helpers.ref_reuse import (
 from apm_cli.install.helpers.ref_reuse import (
     maybe_resolve_git_semver as _maybe_resolve_git_semver,
 )
+from apm_cli.install.helpers.ref_reuse import (
+    requires_remote_ref_resolution as _requires_remote_ref_resolution,
+)
 from apm_cli.install.helpers.ref_seed import seed_ref_resolver_from_lockfile
 from apm_cli.install.transaction import resolution_for_context
 from apm_cli.models.apm_package import GitReferenceType, ResolvedReference
@@ -321,14 +324,6 @@ def _fail_on_resolution_errors(ctx: InstallContext, dependency_graph) -> None:
             ctx.logger.error(error)
     joined_errors = "; ".join(dependency_graph.resolution_errors)
     raise RuntimeError(f"Dependency resolution failed: {joined_errors}")
-
-
-def _requires_remote_ref_resolution(ctx: InstallContext) -> bool:
-    """Return the configured policy decision or fail before resolution."""
-    policy = ctx.ref_freshness_policy
-    if policy is None:
-        raise RuntimeError("Ref freshness policy was not configured")
-    return policy.requires_remote
 
 
 def _attach_resolver_marketplace_provenance(

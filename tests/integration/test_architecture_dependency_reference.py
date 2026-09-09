@@ -55,6 +55,13 @@ def test_alias_consumers_share_validation_and_materialization() -> None:
 @pytest.mark.parametrize(
     ("path", "before", "after"),
     [
+        ("src/apm_cli/deps/lockfile.py", "alias=self.alias", "alias=None"),
+        ("src/apm_cli/deps/lockfile.py", 'result["alias"] = self.alias', "pass"),
+        (
+            "src/apm_cli/deps/lockfile.py",
+            "self.alias = parse_alias_override(self.alias)",
+            "pass",
+        ),
         (REFERENCE, "alias = parse_alias_override(alias)", "alias = alias"),
         (
             "src/apm_cli/models/dependency/registry_entry.py",

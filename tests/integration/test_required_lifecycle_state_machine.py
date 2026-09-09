@@ -1732,8 +1732,8 @@ def test_required_dependency_prune_then_uninstall_cascades_owned_state(
     )
     after_prune = LifecycleStateSnapshot.capture(consumer.root, targets=("claude",))
 
-    assert not (consumer.root / "apm_modules" / _OWNER / "beta-kit").exists()
-    assert (consumer.root / "apm_modules" / _OWNER / "alpha-kit").is_dir()
+    assert not (consumer.root / "apm_modules" / "beta-kit").exists()
+    assert (consumer.root / "apm_modules" / "alpha-kit").is_dir()
     assert "echo beta" not in _hook_commands(settings)
     assert _hook_commands(settings) == ["echo alpha"]
     assert not any(

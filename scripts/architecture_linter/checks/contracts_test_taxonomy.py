@@ -470,6 +470,13 @@ def check_dependency_identity(provider: FactsProvider) -> tuple[Violation, ...]:
 
     findings: list[Violation] = []
     alias_consumers = {
+        "src/apm_cli/deps/lockfile.py": (
+            "self.alias = parse_alias_override(self.alias)",
+            'result["alias"] = self.alias',
+            'alias=data.get("alias")',
+            "alias=dep_ref.alias",
+            "alias=self.alias",
+        ),
         _REFERENCE_OWNER: ("alias = parse_alias_override(alias)",),
         "src/apm_cli/models/dependency/registry_entry.py": (
             'alias = parse_alias_override(entry.get("alias"))',

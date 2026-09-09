@@ -179,6 +179,11 @@ instead so `@` remains reserved for git usernames and version syntax.
 | `skills` | OPTIONAL | Select deployed skills, not a repo slice; use `path` for a subdirectory. |
 | `targets` | OPTIONAL | Consumer-side harness subset for that dependency's target-scoped primitives. Non-empty list of target names. |
 
+Aliases are persisted in `apm.lock.yaml` for replay and removal without changing
+source identity or local `../sibling` source anchors. After upgrading an older
+aliased install, run `apm install` and review the updated lockfile; use the
+updated CLI for subsequent replay and cleanup.
+
 Git [skill collections](../../../../../docs/src/content/docs/reference/package-types.md)
 with `skills/<name>/SKILL.md` support `skills: [name]` without root `apm.yml` or `SKILL.md`.
 
